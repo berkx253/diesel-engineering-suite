@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diesel Engineering Suite V4.3</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial;background:#111;color:#eee;max-width:1200px;margin:auto;padding:15px}
+.card{background:#1d1d1d;border-radius:12px;padding:15px;margin:12px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+input{width:100%;padding:10px;margin:4px 0;box-sizing:border-box}
+canvas{background:#fff;border-radius:8px}
+</style>
+</head>
+<body>
+<h1>Diesel Engineering Suite V4.3</h1>
+
+<div class="card">
+<div class="grid">
+<div>
+<input id="disp" value="1896" type="number" placeholder="Hubraum cm³">
+<input id="rpm" value="4000" type="number" placeholder="Drehzahl">
+<input id="iq" value="70" type="number" placeholder="IQ mg/Hub">
+<input id="targetps" value="220" type="number" placeholder="Ziel PS">
+</div>
+<div>
+<input id="pabs" value="2.6" step="0.1" type="number" placeholder="Druck abs">
+<input id="iat" value="35" type="number" placeholder="IAT">
+<input id="ve" value="90" type="number" placeholder="VE %">
+</div>
+</div>
+</div>
+
+<div class="card"><h3>Ergebnisse</h3><div id="out"></div></div>
+<div class="card"><h3>Ziel-PS Rechner</h3><div id="targetout"></div></div>
+<div class="card"><button onclick="exportCSV()">CSV Export</button></div>
+
+<div class="card"><h3>IQ ↔ Leistung</h3><canvas id="powerChart"></canvas></div>
+<div class="card"><h3>IQ ↔ Lambda</h3><canvas id="lambdaChart"></canvas></div>
+<div class="card"><h3>IQ ↔ AFR</h3><canvas id="afrChart"></canvas></div>
+
+<script>
+let powerChart, lambdaChart, afrChart, csvData="";
+
+function calc(){
+ const d=+disp.value/1000000;
+ const rpmv=+rpm.value;
+ const iqv=+iq.value;
+ const p=+pabs.value*100000;
+ const t=+iat.value+273.15;
+ const vev=+ve.value/100;
+
+ const R=287.05;
+ const airKg=(p*(d/2)*vev)/(R*t);
+ const airMg=airKg*1000000;
+
+ const afr=airMg/iqv;
+ const lambda=afr/14.5;
+
+ let smoke="🟢 Sehr sauber";
+ if(lambda<1.5) smoke="🟢 Sauber";
+ if(lambda<1.3) smoke="🟡 Sportlich";
+ if(lambda<1.15) smoke="🟠 Rauch möglich";
+ if(lambda<1.0) smoke="🔴 Starker Rauch";
+
+ const fuelMin=(iqv/1000000)*(rpmv/2);
+ const kw=(fuelMin*60*1000)/220;
+ const ps=kw*1.35962;
+ const nm=(kw*9550)/(rpmv||1);
+
+ out.innerHTML=`
+ Luftmasse: <b>${airMg.toFixed(0)}</b> mg/Hub<br>
+ AFR: <b>${afr.toFixed(2)}</b><br>
+ Lambda: <b>${lambda.toFixed(2)}</b><br>
+ Smoke: <b>${smoke}</b><br>
+ Leistung: <b>${ps.toFixed(0)} PS</b><br>
+ Drehmoment: <b>${nm.toFixed(0)} Nm</b>`;
+
+ const tps=+targetps.value;
+ const reqIq=(tps/Math.max(ps,1))*iqv;
+ const reqAir=reqIq*14.5*1.25;
+
+ targetout.innerHTML=`
+ Benötigte IQ: <b>${reqIq.toFixed(1)} mg/Hub</b><br>
+ Empf. Luftmasse λ1.25: <b>${reqAir.toFixed(0)} mg/Hub</b>`;
+
+ let xs=[], pss=[], ls=[], afrs=[];
+ for(let i=20;i<=120;i+=5){
+   xs.push(i);
+   let f=(i/1000000)*(rpmv/2);
+   let pkw=(f*60*1000)/220;
+   pss.push((pkw*1.35962).toFixed(0));
+   afrs.push((airMg/i).toFixed(2));
+   ls.push((airMg/i/14.5).toFixed(2));
+ }
+
+ if(powerChart) powerChart.destroy();
+ if(lambdaChart) lambdaChart.destroy();
+ if(afrChart) afrChart.destroy();
+
+ powerChart=new Chart(powerChartCanvas,{type:'line',data:{labels:xs,datasets:[{label:'PS',data:pss}]}});
+ lambdaChart=new Chart(lambdaChartCanvas,{type:'line',data:{labels:xs,datasets:[{label:'Lambda',data:ls}]}});
+ afrChart=new Chart(afrChartCanvas,{type:'line',data:{labels:xs,datasets:[{label:'AFR',data:afrs}]}});
+
+ csvData=`Hubraum,${disp.value}
+Drehzahl,${rpmv}
+IQ,${iqv}
+AFR,${afr.toFixed(2)}
+Lambda,${lambda.toFixed(2)}
+PS,${ps.toFixed(0)}
+Nm,${nm.toFixed(0)}`;
+}
+
+function exportCSV(){
+ const blob=new Blob([csvData],{type:'text/csv'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+ a.download='diesel_setup.csv';
+ a.click();
+}
+
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));
+calc();
+</script>
+</body></html>
