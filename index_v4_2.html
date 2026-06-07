@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diesel Engineering Suite V4.2</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial;background:#111;color:#eee;max-width:1100px;margin:auto;padding:15px}
+.card{background:#1d1d1d;border-radius:12px;padding:15px;margin:12px 0}
+input{width:100%;padding:10px;margin:4px 0;box-sizing:border-box}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+canvas{background:#fff;border-radius:8px}
+</style>
+</head>
+<body>
+<h1>Diesel Engineering Suite V4.2</h1>
+
+<div class="card">
+<div class="grid">
+<div>
+<input id="disp" type="number" value="1896" placeholder="Hubraum cm³">
+<input id="rpm" type="number" value="4000" placeholder="Drehzahl">
+<input id="iq" type="number" value="70" placeholder="IQ mg/Hub">
+</div>
+<div>
+<input id="pabs" type="number" value="2.6" step="0.1" placeholder="Druck abs">
+<input id="iat" type="number" value="35" placeholder="IAT">
+<input id="ve" type="number" value="90" placeholder="VE %">
+</div>
+</div>
+</div>
+
+<div class="card"><div id="out"></div></div>
+
+<div class="card">
+<h3>IQ ↔ Leistung</h3>
+<canvas id="powerChart"></canvas>
+</div>
+
+<div class="card">
+<h3>IQ ↔ Lambda</h3>
+<canvas id="lambdaChart"></canvas>
+</div>
+
+<script>
+let powerChart, lambdaChart;
+
+function calc(){
+ const disp=+dispEl.value/1000000;
+ const rpm=+rpmEl.value;
+ const iq=+iqEl.value;
+ const pabs=+pabsEl.value*100000;
+ const temp=+iatEl.value+273.15;
+ const ve=+veEl.value/100;
+
+ const R=287.05;
+ const airStrokeKg=(pabs*(disp/2)*ve)/(R*temp);
+ const airStrokeMg=airStrokeKg*1000000;
+
+ const afr=airStrokeMg/iq;
+ const lambda=afr/14.5;
+
+ out.innerHTML=`
+ <b>Luftmasse:</b> ${airStrokeMg.toFixed(0)} mg/Hub<br>
+ <b>AFR:</b> ${afr.toFixed(2)}<br>
+ <b>Lambda:</b> ${lambda.toFixed(2)}
+ `;
+
+ let iqs=[], pss=[], lambdas=[];
+
+ for(let x=20;x<=120;x+=5){
+   let fuelPerMin=(x/1000000)*(rpm/2);
+   let kw=(fuelPerMin*60*1000)/220;
+   let ps=kw*1.35962;
+   iqs.push(x);
+   pss.push(ps.toFixed(0));
+   lambdas.push((airStrokeMg/x/14.5).toFixed(2));
+ }
+
+ if(powerChart) powerChart.destroy();
+ if(lambdaChart) lambdaChart.destroy();
+
+ powerChart=new Chart(document.getElementById('powerChart'),{
+   type:'line',
+   data:{labels:iqs,datasets:[{label:'PS',data:pss}]}
+ });
+
+ lambdaChart=new Chart(document.getElementById('lambdaChart'),{
+   type:'line',
+   data:{labels:iqs,datasets:[{label:'Lambda',data:lambdas}]}
+ });
+}
+
+const dispEl=document.getElementById('disp');
+const rpmEl=document.getElementById('rpm');
+const iqEl=document.getElementById('iq');
+const pabsEl=document.getElementById('pabs');
+const iatEl=document.getElementById('iat');
+const veEl=document.getElementById('ve');
+const out=document.getElementById('out');
+
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));
+calc();
+</script>
+</body>
+</html>
