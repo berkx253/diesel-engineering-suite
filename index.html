@@ -39,7 +39,35 @@ function lamiq(){let a=+lair.value||0,l=+glam.value||1.2; lamout.innerText=(a/(1
 function afriq(){let a=+aair.value||0,f=+gafr.value||18; afrout.innerText=(a/f).toFixed(1)+" mg/Hub";}
 function nmiq(){let n=+gnm.value||0; nmout.innerText=(n/5.7).toFixed(1)+" mg/Hub";}
 function torqueiq(){let n=+tnm.value||0; tqout.innerText=(n/5.7).toFixed(1)+" mg/Hub";}
-function eoicalc(){let s=+soi.value||0; let d=(+dur.value||900)/180; eoi.innerText=(s+d).toFixed(1)+"°";}
+function eoicalc(){
+
+ let soiVal = parseFloat(document.getElementById('soi').value) || 0;
+ let durVal = parseFloat(document.getElementById('dur').value) || 900;
+ let rpmVal = parseFloat(document.getElementById('rpm').value) || 4000;
+
+ // Kurbelwinkel pro µs
+ let degPerUs = (rpmVal * 6) / 1000000;
+
+ // Einspritzwinkel
+ let injAngle = durVal * degPerUs;
+
+ // SOI als vOT negativ behandeln
+ let eoiVal = (-soiVal) + injAngle;
+
+ document.getElementById('injangle').innerText =
+   injAngle.toFixed(2) + " °KW";
+
+ document.getElementById('eoi').innerText =
+   eoiVal.toFixed(2) + " °";
+
+ let warning = "🟢 Optimal";
+
+ if(eoiVal > 5) warning = "🟡 Spät";
+ if(eoiVal > 10) warning = "🟠 Sehr spät";
+ if(eoiVal > 15) warning = "🔴 Kritisch spät";
+
+ document.getElementById('eoiwarn').innerText = warning;
+}
 </script>
 </head>
 <body onload="calcMain()">
